@@ -49,17 +49,25 @@ export function isChangingPage (to: RouteLocationNormalized, from: RouteLocation
   return true
 }
 
+const RAW_VAPOR_SLOT_KEY_DESCRIPTION = 'rawVaporSlot'
+
 /**
  * Detect a vapor slot function passed into a vdom component via interop.
  *
- * Vapor slots register `__vapor`/`__vs` markers on the slot function itself, so
- * we can recognise them without invoking the slot. Calling a vapor slot to
- * inspect the shape of its returned VNodes is not a safe dry run (its content is
- * not expressed as a VNode tree), so callers use this to skip VNode-shape
- * heuristics rather than silently make a wrong decision.
+ * Vapor slots carry a marker on the slot function itself, so we can recognise
+ * them without invoking the slot. Calling a vapor slot to inspect the shape of
+ * its returned VNodes is not a safe dry run (its content is not expressed as a
+ * VNode tree), so callers use this to skip VNode-shape heuristics rather than
+ * silently make a wrong decision.
+ *
+ * Since Vue 3.6.0-rc.6 the marker is the `rawVaporSlotKey` symbol; earlier
+ * prereleases used `__vapor`/`__vs` properties. `rawVaporSlotKey` is an internal
+ * export that older Vue versions do not have, so it is matched by description.
  */
 export function isVaporSlot (slot: ((...args: any[]) => any) | undefined | null): boolean {
-  return !!slot && (!!(slot as any).__vapor || !!(slot as any).__vs)
+  if (!slot) { return false }
+  if ((slot as any).__vapor || (slot as any).__vs) { return true }
+  return Object.getOwnPropertySymbols(slot).some(key => key.description === RAW_VAPOR_SLOT_KEY_DESCRIPTION && !!(slot as any)[key])
 }
 
 const VALID_TAG_RE = /^[a-z][a-z0-9-]*$/i

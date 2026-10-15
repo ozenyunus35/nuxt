@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { renderList } from 'vue'
-import { getFragmentHTML, vforToArray } from '../../packages/nuxt/src/app/components/utils'
+import { getFragmentHTML, isVaporSlot, vforToArray } from '../../packages/nuxt/src/app/components/utils'
 
 describe('vforToArray', () => {
   it('matches renderList semantics for number sources', () => {
@@ -91,5 +91,30 @@ describe('getFragmentHTML', () => {
       '<div><img src="/island-asset.svg"></div>',
     ])
     expect(cloneNode).not.toHaveBeenCalled()
+  })
+})
+
+describe('isVaporSlot', () => {
+  it('recognises the rawVaporSlotKey symbol set by Vue 3.6.0-rc.6+', () => {
+    // mirrors `rawVaporSlotKey = Symbol('rawVaporSlot')` in @vue/runtime-core
+    const rawVaporSlotKey = Symbol('rawVaporSlot')
+    const slot = () => []
+    const wrapped = () => []
+    ;(slot as any)[rawVaporSlotKey] = slot
+    ;(wrapped as any)[rawVaporSlotKey] = slot
+    expect(isVaporSlot(slot)).toBe(true)
+    expect(isVaporSlot(wrapped)).toBe(true)
+  })
+
+  it('recognises the `__vapor`/`__vs` markers of earlier Vue 3.6 prereleases', () => {
+    expect(isVaporSlot(Object.assign(() => [], { __vapor: true }))).toBe(true)
+    expect(isVaporSlot(Object.assign(() => [], { __vs: true }))).toBe(true)
+  })
+
+  it('does not match vdom slots or other symbols', () => {
+    expect(isVaporSlot(undefined)).toBe(false)
+    expect(isVaporSlot(null)).toBe(false)
+    expect(isVaporSlot(() => [])).toBe(false)
+    expect(isVaporSlot(Object.assign(() => [], { [Symbol('other')]: true }))).toBe(false)
   })
 })
